@@ -35,4 +35,6 @@ def get_matches(team_id):
     print(f"Losses: {result_set.get('losses', 0)}")
     print(f"Matches returned: {len(matches)}")
 
-get_matches(64)
+
+for team_id in top_six_teams:
+    get_matches(team_id)
