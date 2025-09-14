@@ -3,22 +3,28 @@ import os
 from dotenv import load_dotenv
 import json
 import csv
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
 
 load_dotenv()
 
 token = os.getenv("API_TOKEN")
+
+USE_API = False
 
 if not token:
     raise RuntimeError("Missing API_Token in environment or .env file")
 
 uri = 'https://api.football-data.org/v4/matches?season=2024&limit=5'
 headers = {'X-Auth-Token' : os.getenv("API_TOKEN")} 
-
 response = requests.get(uri, headers=headers)
 print(f"Status code is: {response.status_code}")
 print(f"Response keys are: {list(response.json().keys())}")
 print(f"Number of matches: {len(response.json()['matches'])}")
-# top_six_teams = [57, 66, 61, 65, 64, 73]
+
 top_six_teams = {
                  "Arsenal": 57,
                  "Tottenham": 73,
@@ -27,6 +33,9 @@ top_six_teams = {
                  "Man Utd": 66,
                  "Man City": 65 
                  }
+
+
+
 
 def get_matches(team_id):
     uri = f"https://api.football-data.org/v4/teams/{team_id}/matches?competitions=PL&season=2024"
@@ -110,10 +119,40 @@ for team_name, matches in all_team_data.items():
         csv_data.append(match)
 
 with open('top_six_matches.csv', 'w', newline='') as f:
-    if csv_data:  # Make sure we have data
+    if csv_data: 
         fieldnames = csv_data[0].keys()  # Get column names from first row
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(csv_data)
 
 print("Data saved to 'top_six_matches.csv'")
+
+df = pd.read_csv('top_six_matches.csv')
+print(df.head())
+print(df.info())
+
+print("Venue: ", df['venue'].unique())
+print("Result:", df['result'].unique())
+print("Sample data")
+print(df[['team', 'venue', 'result', 'home_score', 'away_score']].head(10))
+
+home_away_score = df.groupby(['team', 'venue', 'result']).size().unstack(fill_value=0)
+print(home_away_score)
+
+home_away_wins = df.groupby(['team', 'venue', 'result']).size().unstack(fill_value=0)
+total_games = home_away_wins.sum(axis=1)
+win_percentages = (home_away_wins['Win'] / total_games * 100).unstack()
+
+print("Win Percentage: ")
+print(win_percentages)
+
+# Visualization
+plt.figure(figsize=(12, 6))
+win_percentages.plot(kind='bar', width=0.8)
+plt.title('Home vs Away Win Percentage by Team')
+plt.ylabel('Win Percentage (%)')
+plt.xlabel('Team')
+plt.legend(['Away', 'Home'])
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
